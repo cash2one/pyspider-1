@@ -1,0 +1,154 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+from pyspider.spider.base_handler import *
+from lxml import etree
+import random
+import tornado.gen
+import tornado.httpclient
+import time
+import re
+import json
+from pyspider.fetcher.tonado_cookies import cookie_to_dict
+
+pool_size = 1
+
+class LianjiaSpider(BaseHandler):
+    """demo spider to crawler sougou weixin article"""
+
+
+    @every(minutes=120)
+    def on_start(self, response, task):
+        seed_file = task['seed_path']
+        url_list = []
+        self.log.info("hello")
+        with open(seed_file, 'rb') as fi:
+            for line in fi:
+                url = line.strip()
+                if url:
+                    url_list.append(url)
+        for url in url_list:
+            self.crawl(url, task, callback=self.index_page)
+
+    def index_page(self, response, task):
+        doc = response.doc
+        self.log.info(doc)
+	location_url=response.url[7:-1].split('.')[0]
+	pre_url="http://"+response.url[7:-1].split('/')[0]+"/loupan"
+	self.log.info(location_url)
+        if doc is not None:
+	    #self.log.info("1")
+            for node in doc.xpath('//div[@class="list-wrap"]'):
+                house_list_tree= node.xpath('./ul[@class="house-lst"]')[0]
+                #self.log.info('2')
+		house_list=house_list_tree.xpath('./li')
+                #self.log.info('3')
+		
+		for house in house_list:
+		    try:
+		    	save=dict()
+		    	house_info=house.xpath('./div[@class="info-panel"]')[0]
+		    #house_detail=house.xpath('./div')[0]
+                    	#self.log.info(house_info.xpath('./@class'))
+                    	house_col1=house_info.xpath('./div[@class="col-1"]')[0]
+		    	house_col2=house_info.xpath('./div[@class="col-2"]')[0]	
+		    
+ 		    	house_title=house_col1.xpath('./h2/a/text()')[0]
+		    
+		    	self.log.info(house_title.encode('utf-8'))
+		    	house_href=house_col1.xpath('./h2/a/@href')[0]
+ 		    
+		    	self.log.info(house_href.encode('utf-8'))
+		    	house_scale=house_col1.xpath('./div[@class="area"]/span/text()')[0]
+		    
+                   	self.log.info(house_scale.encode('utf-8'))
+		    	house_type=house_col1.xpath('./div[@class="area"]/text()')[0]
+		    
+		    	self.log.info(house_type.encode('utf-8'))
+		    	where=house_col1.xpath('./div[@class="where"]/span/text()')[0]
+		    
+                    	self.log.info(where.encode('utf-8'))
+                   	house_aver_price=house_col2.xpath('./div[@class="price"]/div[@class="average"]')[0]
+                    	if house_aver_price.xpath('./text()')[0].find(u'待定')<0: 
+		    		house_aver_price=house_aver_price.xpath('./span/text()')[0]
+				self.log.info(house_aver_price.encode('utf-8'))
+		    	else:
+				self.log.info("-1")
+		    	#self.log.info("ok")
+		    	house_total_price=house_col2.xpath('./div[@class="price"]/div[@class="sum-num"]')
+		    	#self.log.info("ok")
+		    	if len(house_total_price)>=1:
+				house_total_price=house_col2.xpath('./div[@class="price"]/div[@class="sum-num"]/span/text()')[0]
+				#self.log.info('ok')  	    
+		    		self.log.info(house_total_price.encode('utf-8'))
+		    	save["location_url"]=location_url
+		    	save["house_title"]=house_title
+		    	save["house_href"]=house_href
+		    	save["house_scale"]=house_scale
+		    	save["house_type"]=house_type
+		    	save["house_where"]=where
+		    	save["house_aver_price"]=house_aver_price
+		    	save["house_total_price"]=house_total_price
+		    	#self.log.info(house_href)  
+                    	self.crawl(house_href, task, callback=self.article_page, save=save)
+			#self.log.info("next page ana")
+		    except Exception, e:
+			pass;
+		
+		try:
+	            #self.log.info(node)	
+		    next_page_url=node.xpath('./div[@class="page-box house-lst-page-box"]/@page-data')[0]
+	 	    #self.log.info("next ok")
+		    #self.log.info(next_page_url)
+		    page_json=json.loads(next_page_url)
+		    if int(page_json["totalPage"])>int(page_json["curPage"]):
+		        #self.log.info("next ok ok ")
+		        self.crawl(pre_url+"/pg"+str(page_json["curPage"]+1),task,callback=self.index_page)
+		        #self.log.info("return")
+		except Exception,e:
+			pass;
+		
+    def article_page(self, response, task):
+        save = response.save
+	doc=response.doc
+        if save is not None and doc is not None:
+            result = dict()
+            result['program_location'] = doc.xpath('//div[@class="box-loupan"]/p[@class="desc-p clear"]/span[@class="label-val"]/text()')
+            result['program_time'] = doc.xpath('//div[@class="box-loupan"]/ul[@class="table-list clear"]/li[1]/p/span[@class="label-val"]/text()')
+	    result['live_time'] = doc.xpath('//div[@class="box-loupan"]/ul[@class="table-list clear"]/li[3]/p/span[@class="label-val"]/text()')
+            result['house_num'] =doc.xpath('//div[@class="box-loupan"]/ul[@class="table-list clear"]/li[7]/p/span[@class="label-val"]/text()') 
+	    result['live_area'] = doc.xpath('//div[@class="box-loupan"]/ul[@class="table-list clear"]/li[15]/p/span[@class="label-val"]/text()')
+	    result['building_area'] = doc.xpath('//div[@class="box-loupan"]/ul[@class="table-list clear"]/li[16]/p/span[@class="label-val"]/text()')
+            if result['program_location']:
+                result['program_location'] = result['program_location'][0].strip()
+            if result['program_time']:
+                result['program_time'] = result['program_time'][0].strip()
+            if result['live_time']:
+                result['live_time'] = result['live_time'][0].strip()
+            if result['house_num']:
+                result['house_num'] =result['house_num'][0].strip()
+            if result['live_area']:
+                result['live_area']=result['live_area'][0].strip()
+	    if result['building_area']:
+		result['building_area']=result['building_area'][0].strip()
+	    
+	    if save['location_url']:
+		result['location_url']=save['location_url']
+	    if save['house_title']:
+		result['house�_title']=save['house_title']
+	    if save['house_href']:
+		result['house_href']=save['house_href']
+	    if save['house_scale']:
+		result['house_scale']=save['house_scale']
+	    if save['house_type']:
+		result['house_type']=save['house_type']
+	    if save['house_where']:
+		result['house_where']=save['house_where']
+	    if save['house_aver_price']:
+		result['house_aver_price']=save['house_aver_price']
+	    if save['house_total_price']:
+		result['house_total_price']=save['house_total_price']	
+	    self.log.info(result['program_time'].encode('utf-8'))
+            return result
+
+__handler_cls__ = LianjiaSpider
