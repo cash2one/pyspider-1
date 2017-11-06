@@ -1,0 +1,13 @@
+[DEFAULT]
+base_data_dir = /Users/xuguoqiang/Documents/pyspider-master2/pyspider-master/data 
+base_seed_dir = %(base_data_dir)s/seed
+base_html_dir = %(base_data_dir)s/html
+
+[zhihu]
+spider = /Users/xuguoqiang/work/pyspider/pyspider-master/data/spider/zhihu/zhihu_spider.py
+cookies = _1122=228298
+seed_path = %(base_seed_dir)s/zhihu/seed
+save_html_path = %(base_html_dir)s/zhihu
+save_html = 1
+rate = 3
+burst = 10

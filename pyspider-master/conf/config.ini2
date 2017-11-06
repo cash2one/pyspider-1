@@ -1,0 +1,39 @@
+[DEFAULT]
+base_data_dir = /Users/xuguoqiang/Documents/pyspider-master2/pyspider-master/data
+base_seed_dir = %(base_data_dir)s/seed
+base_html_dir = %(base_data_dir)s/html
+
+[run]
+projects = cnstock
+delete = 2
+queue_maxsize = 1000000
+tornado_pool_size = 300
+max_rate = 10
+max_burst = 100
+run_in = process
+enable_phantomjs = False
+add_sys_path = True
+data_path = ./data/
+
+[cnstock]
+follow = 1
+domain = cnstock.com
+seed_path = %(base_seed_dir)s/cnstock/seed
+save_html_path = %(base_html_dir)s/cnstock
+save_html = 1
+depth_limit = 3
+seed_age = 3500
+every = 3600
+list_url_age = 3500
+list_url_black_pattern = http://[^\.]+\.cnstock\.com/.*/\d+/\d+\.htm
+url_pattern_mod = base
+base_url_pattern = ^http://www\.cnstock\.com.*,^http://data\.cnstock\.com.*,^http://news\.cnstock\.com.*,
+ ^http://stock\.cnstock\.com.*,^http://ggjd\.cnstock\.com.*,^http://company\.cnstock\.com.*,^http://yjbg\.cnstock\.com.*,
+ ^http://caifu\.cnstock\.com.*
+senior_url_pattern = None
+xpath = {"^http://[^/\\.]+\\.cnstock\\.com/.*/2015\\d+/\\d+\\.htm": {"content": "id(\"pager-content\")/div[2]",
+ "real_title": "id(\"pager-content\")/h1/text()", "meta_description": "/html/head/meta[@name=\"description\"]/@content",
+ "meta_keywords": "/html/head/meta[@name=\"keywords\"]/@content", "public_time": "id(\"pager-content\")/div[1]/span[1]/text()"}}
+
+[test]
+spider = /Users/xuguoqiang/Documents/pyspider-master2/pyspider-master/data/script/test

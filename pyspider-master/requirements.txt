@@ -1,0 +1,14 @@
+chardet>=2.2
+cssselect>=0.9
+lxml
+pycurl
+pyquery
+requests>=2.2
+tornado>=3.2
+pika>=0.9.14
+pymongo>=2.7.2,<3.0
+unittest2>=0.5.1
+u-msgpack-python>=1.6
+click>=3.3
+six
+redis
